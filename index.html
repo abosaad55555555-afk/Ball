@@ -1,0 +1,1960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#1a4d7a" />
+<meta name="description" content="Football Bridge - The ultimate balance challenge! Navigate your football across floating bridges, collect coins, unlock skins, and beat your best score!" />
+<meta name="keywords" content="football, bridge, balance, game, mobile, casual, soccer" />
+<title>Football Bridge - Balance Challenge</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #fff;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #gameCanvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  /* ===== HUD ===== */
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 12px 16px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    z-index: 10; pointer-events: none;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  #hud.visible { opacity: 1; }
+
+  .hud-panel {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 14px;
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .hud-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: clamp(12px, 3vw, 15px);
+    font-weight: 600;
+  }
+  .hud-item + .hud-item { margin-top: 4px; }
+  .hud-value { color: #ffd54a; font-weight: 700; }
+
+  #pauseBtn {
+    position: absolute; top: 12px; right: 16px;
+    width: 44px; height: 44px;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    color: #fff; font-size: 20px;
+    cursor: pointer;
+    z-index: 11;
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  #pauseBtn.visible { display: flex; }
+
+  /* Combo indicator */
+  #comboDisplay {
+    position: absolute;
+    top: 120px; left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(24px, 6vw, 36px);
+    font-weight: 900;
+    color: #ffd54a;
+    text-shadow: 0 0 20px rgba(255, 213, 74, 0.8), 0 4px 8px rgba(0,0,0,0.5);
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    z-index: 9;
+  }
+  #comboDisplay.show {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.2);
+  }
+
+  /* Power-up indicator */
+  #powerupIndicator {
+    position: absolute;
+    top: 80px; left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: rgba(255, 213, 74, 0.2);
+    border: 2px solid #ffd54a;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 9;
+  }
+  #powerupIndicator.show { opacity: 1; }
+
+  /* ===== OVERLAYS ===== */
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 100;
+    padding: 20px;
+    overflow-y: auto;
+    animation: fadeIn 0.3s ease-out;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .overlay.hidden { display: none; }
+
+  .overlay-content {
+    max-width: 480px; width: 100%;
+    text-align: center;
+    animation: slideUp 0.4s ease-out;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .logo {
+    font-size: clamp(36px, 10vw, 64px);
+    font-weight: 900;
+    background: linear-gradient(135deg, #ffd54a 0%, #ff9f4a 50%, #ff6b6b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+  .logo-sub {
+    font-size: clamp(12px, 3vw, 16px);
+    color: #ffd54a;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    font-weight: 600;
+  }
+
+  .currency-bar {
+    display: flex; justify-content: center; gap: 12px;
+    margin-bottom: 24px;
+  }
+  .currency-item {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 6px 14px;
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .btn {
+    padding: 14px 24px;
+    font-size: clamp(14px, 4vw, 17px);
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    font-family: inherit;
+    touch-action: manipulation;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn:active { transform: scale(0.96); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ffd54a 0%, #ff9f4a 100%);
+    color: #1a1a1a;
+    box-shadow: 0 6px 20px rgba(255, 159, 74, 0.4);
+    grid-column: span 2;
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+  .btn-shop {
+    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.3);
+  }
+  .btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+  }
+  .btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+  }
+
+  .btn-label { display: block; font-size: 11px; opacity: 0.8; margin-top: 2px; text-transform: none; letter-spacing: 0; }
+
+  /* ===== SHOP ===== */
+  .shop-section {
+    margin-bottom: 20px;
+    text-align: left;
+  }
+  .shop-title {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #ffd54a;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .shop-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .shop-item {
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .shop-item.equipped {
+    border-color: #ffd54a;
+    background: rgba(255, 213, 74, 0.15);
+    box-shadow: 0 0 20px rgba(255, 213, 74, 0.3);
+  }
+  .shop-item.locked { opacity: 0.6; }
+  .shop-item:active { transform: scale(0.95); }
+  .shop-preview {
+    width: 100%; aspect-ratio: 1;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    overflow: hidden;
+  }
+  .shop-name {
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .shop-price {
+    font-size: 12px;
+    color: #ffd54a;
+    font-weight: 700;
+  }
+  .shop-price.owned { color: #10b981; }
+
+  /* ===== GAME OVER ===== */
+  .go-title {
+    font-size: clamp(32px, 8vw, 48px);
+    font-weight: 900;
+    color: #ff6b6b;
+    margin-bottom: 8px;
+    text-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+  }
+  .new-record {
+    display: inline-block;
+    background: linear-gradient(135deg, #ffd54a 0%, #ff9f4a 100%);
+    color: #1a1a1a;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 213, 74, 0.4); }
+    50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 213, 74, 0.7); }
+  }
+  .new-record.hidden { display: none; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .stat-card {
+    background: rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .stat-label {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-size: clamp(20px, 5vw, 26px);
+    font-weight: 800;
+    color: #ffd54a;
+  }
+
+  /* ===== ACHIEVEMENTS ===== */
+  .achievement-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    margin: 16px 0;
+  }
+  .achievement {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    text-align: left;
+  }
+  .achievement.unlocked {
+    background: rgba(255, 213, 74, 0.1);
+    border-color: rgba(255, 213, 74, 0.3);
+  }
+  .achievement.locked { opacity: 0.5; }
+  .ach-icon {
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .achievement.unlocked .ach-icon {
+    background: rgba(255, 213, 74, 0.2);
+  }
+  .ach-info { flex: 1; min-width: 0; }
+  .ach-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  .ach-desc { font-size: 11px; color: #aaa; }
+  .ach-reward { font-size: 11px; color: #ffd54a; margin-top: 2px; }
+
+  /* ===== SETTINGS ===== */
+  .setting-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .setting-label { font-weight: 600; font-size: 15px; }
+  .toggle {
+    width: 50px; height: 28px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 14px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: #10b981; }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 22px; height: 22px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(22px); }
+
+  /* ===== DAILY REWARD ===== */
+  .daily-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin: 16px 0;
+  }
+  .daily-day {
+    aspect-ratio: 1;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 10px;
+    padding: 4px;
+  }
+  .daily-day.claimed {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+  }
+  .daily-day.today {
+    background: rgba(255, 213, 74, 0.2);
+    border-color: #ffd54a;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .daily-day-num { font-weight: 700; font-size: 9px; color: #888; }
+  .daily-day-reward { font-size: 16px; margin: 2px 0; }
+  .daily-day-amount { font-weight: 700; color: #ffd54a; }
+
+  /* ===== TUTORIAL ===== */
+  .tutorial-step {
+    background: rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    text-align: left;
+  }
+  .tutorial-step-num {
+    display: inline-block;
+    background: #ffd54a;
+    color: #1a1a1a;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 24px;
+    font-weight: 800;
+    margin-right: 8px;
+  }
+
+  /* ===== TOUCH ZONES ===== */
+  .touch-zones {
+    position: absolute;
+    bottom: 30px;
+    left: 0; right: 0;
+    display: none;
+    justify-content: space-around;
+    padding: 0 40px;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.3;
+  }
+  .touch-zone {
+    width: 70px; height: 70px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.15s;
+  }
+  .touch-zone.active {
+    background: rgba(255, 213, 74, 0.4);
+    border-color: #ffd54a;
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  @media (hover: none) and (pointer: coarse) {
+    .touch-zones { display: flex; }
+  }
+
+  /* ===== TOAST NOTIFICATIONS ===== */
+  #toastContainer {
+    position: absolute;
+    top: 100px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    pointer-events: none;
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: center;
+  }
+  .toast {
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 213, 74, 0.3);
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s forwards;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes toastOut {
+    to { opacity: 0; transform: translateY(-20px); }
+  }
+
+  /* ===== SCREEN SHAKE ===== */
+  .shake {
+    animation: shake 0.4s ease-out;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-8px, -4px); }
+    20% { transform: translate(8px, 4px); }
+    30% { transform: translate(-6px, 3px); }
+    40% { transform: translate(6px, -3px); }
+    50% { transform: translate(-4px, 2px); }
+    60% { transform: translate(4px, -2px); }
+    70% { transform: translate(-2px, 1px); }
+    80% { transform: translate(2px, -1px); }
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-panel">
+    <div class="hud-item">🏆 <span>Lv</span> <span class="hud-value" id="levelDisplay">1</span></div>
+    <div class="hud-item">📏 <span class="hud-value" id="distDisplay">0m</span></div>
+  </div>
+  <div class="hud-panel">
+    <div class="hud-item">🪙 <span class="hud-value" id="coinDisplay">0</span></div>
+    <div class="hud-item">⭐ <span class="hud-value" id="bestDisplay">0m</span></div>
+  </div>
+</div>
+<button id="pauseBtn" aria-label="Pause">⏸</button>
+
+<div id="comboDisplay"></div>
+<div id="powerupIndicator"></div>
+
+<div class="touch-zones" id="touchZones">
+  <div class="touch-zone" id="leftZone">←</div>
+  <div class="touch-zone" id="rightZone">→</div>
+</div>
+
+<div id="toastContainer"></div>
+
+<!-- ===== MAIN MENU ===== -->
+<div class="overlay" id="menuScreen">
+  <div class="overlay-content">
+    <h1 class="logo">Football<br>Bridge</h1>
+    <div class="logo-sub">Balance Challenge</div>
+
+    <div class="currency-bar">
+      <div class="currency-item">🪙 <span id="menuCoins">0</span></div>
+      <div class="currency-item">⭐ <span id="menuBest">0m</span></div>
+    </div>
+
+    <div class="menu-grid">
+      <button class="btn btn-primary" id="playBtn">
+        ▶ Play
+        <span class="btn-label">Start the challenge</span>
+      </button>
+      <button class="btn btn-shop" id="shopBtn">🛍 Shop</button>
+      <button class="btn btn-secondary" id="achievementsBtn">🏅 Awards</button>
+      <button class="btn btn-secondary" id="dailyBtn">🎁 Daily</button>
+      <button class="btn btn-secondary" id="settingsBtn">⚙ Settings</button>
+      <button class="btn btn-secondary" id="shareBtn">📤 Share</button>
+    </div>
+
+    <div style="font-size: 11px; color: #666; margin-top: 8px;">v1.0 · Made with ❤</div>
+  </div>
+</div>
+
+<!-- ===== SHOP ===== -->
+<div class="overlay hidden" id="shopScreen">
+  <div class="overlay-content">
+    <h2 style="font-size: 28px; margin-bottom: 4px;">🛍 Shop</h2>
+    <div class="currency-bar">
+      <div class="currency-item">🪙 <span id="shopCoins">0</span></div>
+    </div>
+
+    <div class="shop-section">
+      <div class="shop-title">⚽ Football Skins</div>
+      <div class="shop-grid" id="skinsGrid"></div>
+    </div>
+
+    <div class="shop-section">
+      <div class="shop-title">✨ Power-Ups</div>
+      <div class="shop-grid" id="powerupsGrid"></div>
+    </div>
+
+    <button class="btn btn-secondary" id="shopBackBtn" style="width: 100%;">← Back</button>
+  </div>
+</div>
+
+<!-- ===== ACHIEVEMENTS ===== -->
+<div class="overlay hidden" id="achievementsScreen">
+  <div class="overlay-content">
+    <h2 style="font-size: 28px; margin-bottom: 4px;">🏅 Achievements</h2>
+    <p style="color: #888; font-size: 13px; margin-bottom: 12px;">
+      <span id="achUnlocked">0</span> / <span id="achTotal">0</span> unlocked
+    </p>
+    <div class="achievement-list" id="achievementList"></div>
+    <button class="btn btn-secondary" id="achBackBtn" style="width: 100%;">← Back</button>
+  </div>
+</div>
+
+<!-- ===== DAILY REWARD ===== -->
+<div class="overlay hidden" id="dailyScreen">
+  <div class="overlay-content">
+    <h2 style="font-size: 28px; margin-bottom: 4px;">🎁 Daily Reward</h2>
+    <p style="color: #888; font-size: 13px; margin-bottom: 12px;">Come back every day!</p>
+    <div class="daily-grid" id="dailyGrid"></div>
+    <button class="btn btn-primary" id="claimDailyBtn" style="width: 100%;">Claim Today's Reward</button>
+    <button class="btn btn-secondary" id="dailyBackBtn" style="width: 100%; margin-top: 8px;">← Back</button>
+  </div>
+</div>
+
+<!-- ===== SETTINGS ===== -->
+<div class="overlay hidden" id="settingsScreen">
+  <div class="overlay-content">
+    <h2 style="font-size: 28px; margin-bottom: 16px;">⚙ Settings</h2>
+    
+    <div class="setting-row">
+      <span class="setting-label">🔊 Sound Effects</span>
+      <div class="toggle on" id="sfxToggle"></div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">🎵 Music</span>
+      <div class="toggle on" id="musicToggle"></div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">📳 Vibration</span>
+      <div class="toggle on" id="vibrationToggle"></div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">🎥 Camera Shake</span>
+      <div class="toggle on" id="shakeToggle"></div>
+    </div>
+
+    <button class="btn btn-danger" id="resetBtn" style="width: 100%; margin-top: 16px;">🗑 Reset All Progress</button>
+    <button class="btn btn-secondary" id="settingsBackBtn" style="width: 100%; margin-top: 8px;">← Back</button>
+  </div>
+</div>
+
+<!-- ===== PAUSE ===== -->
+<div class="overlay hidden" id="pauseScreen">
+  <div class="overlay-content">
+    <h2 style="font-size: 36px; margin-bottom: 20px;">⏸ Paused</h2>
+    <div class="menu-grid">
+      <button class="btn btn-primary" id="resumeBtn">▶ Resume</button>
+      <button class="btn btn-secondary" id="restartFromPauseBtn">🔄 Restart</button>
+      <button class="btn btn-secondary" id="quitBtn">🏠 Main Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GAME OVER ===== -->
+<div class="overlay hidden" id="gameOverScreen">
+  <div class="overlay-content">
+    <h2 class="go-title">Game Over!</h2>
+    <div id="newRecordBadge" class="new-record hidden">🎉 NEW RECORD!</div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Level</div>
+        <div class="stat-value" id="finalLevel">1</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Distance</div>
+        <div class="stat-value" id="finalDist">0m</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Coins</div>
+        <div class="stat-value" id="finalCoins">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Best Combo</div>
+        <div class="stat-value" id="finalCombo">0x</div>
+      </div>
+    </div>
+
+    <div class="menu-grid">
+      <button class="btn btn-success" id="reviveBtn">
+        📺 Watch Ad to Revive
+        <span class="btn-label">Continue from where you fell</span>
+      </button>
+      <button class="btn btn-primary" id="restartBtn">🔄 Play Again</button>
+      <button class="btn btn-secondary" id="menuBtn">🏠 Main Menu</button>
+      <button class="btn btn-secondary" id="goShareBtn">📤 Share Score</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TUTORIAL ===== -->
+<div class="overlay hidden" id="tutorialScreen">
+  <div class="overlay-content">
+    <h2 style="font-size: 28px; margin-bottom: 16px;">📖 How to Play</h2>
+    
+    <div class="tutorial-step">
+      <span class="tutorial-step-num">1</span>
+      <strong>Stay on the bridge!</strong>
+      <p style="font-size: 13px; color: #aaa; margin-top: 4px;">Your football moves forward automatically. Don't fall off!</p>
+    </div>
+    <div class="tutorial-step">
+      <span class="tutorial-step-num">2</span>
+      <strong>Control movement</strong>
+      <p style="font-size: 13px; color: #aaa; margin-top: 4px;">Desktop: A/D or ←/→ keys<br>Mobile: Tap left/right side of screen</p>
+    </div>
+    <div class="tutorial-step">
+      <span class="tutorial-step-num">3</span>
+      <strong>Collect coins</strong>
+      <p style="font-size: 13px; color: #aaa; margin-top: 4px;">Grab coins to unlock skins and power-ups in the shop!</p>
+    </div>
+    <div class="tutorial-step">
+      <span class="tutorial-step-num">4</span>
+      <strong>Build combos</strong>
+      <p style="font-size: 13px; color: #aaa; margin-top: 4px;">Collect coins in quick succession for bonus multipliers!</p>
+    </div>
+
+    <button class="btn btn-primary" id="tutorialDoneBtn" style="width: 100%;">Got it! Let's Play</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+// FOOTBALL BRIDGE - PROFESSIONAL EDITION
+// ============================================================
+
+// ========== SAVE SYSTEM ==========
+const SAVE_KEY = 'footballBridgePro_v1';
+const defaultSave = {
+  coins: 0,
+  best: 0,
+  totalDistance: 0,
+  totalCoins: 0,
+  gamesPlayed: 0,
+  equippedSkin: 'classic',
+  ownedSkins: ['classic'],
+  powerups: { shield: 0, magnet: 0, slowmo: 0, x2: 0 },
+  achievements: {},
+  dailyStreak: 0,
+  lastDaily: 0,
+  tutorialSeen: false,
+  settings: { sfx: true, music: true, vibration: true, shake: true }
+};
+let save = loadSave();
+
+function loadSave() {
+  try {
+    const data = localStorage.getItem(SAVE_KEY);
+    if (data) {
+      const parsed = JSON.parse(data);
+      return { ...defaultSave, ...parsed, settings: { ...defaultSave.settings, ...(parsed.settings||{}) }, powerups: { ...defaultSave.powerups, ...(parsed.powerups||{}) } };
+    }
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(defaultSave));
+}
+function saveSave() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch(e) {}
+}
+
+// ========== CONTENT DEFINITIONS ==========
+const SKINS = [
+  { id: 'classic', name: 'Classic', price: 0, colors: ['#ffffff', '#1a1a1a'] },
+  { id: 'gold', name: 'Gold', price: 200, colors: ['#ffd700', '#b8860b'] },
+  { id: 'fire', name: 'Fire', price: 500, colors: ['#ff4500', '#8b0000'] },
+  { id: 'ice', name: 'Ice', price: 500, colors: ['#87ceeb', '#4169e1'] },
+  { id: 'emerald', name: 'Emerald', price: 750, colors: ['#50c878', '#006400'] },
+  { id: 'galaxy', name: 'Galaxy', price: 1000, colors: ['#9370db', '#191970'] },
+  { id: 'rainbow', name: 'Rainbow', price: 1500, colors: ['#ff0080', '#7928ca'] },
+  { id: 'diamond', name: 'Diamond', price: 2500, colors: ['#b9f2ff', '#00bfff'] },
+  { id: 'shadow', name: 'Shadow', price: 3000, colors: ['#2c2c2c', '#000000'] }
+];
+
+const POWERUPS_DEF = {
+  shield: { name: 'Shield', emoji: '🛡', price: 100, desc: 'Survive one fall' },
+  magnet: { name: 'Magnet', emoji: '🧲', price: 150, desc: 'Attract coins' },
+  slowmo: { name: 'Slow-Mo', emoji: '⏳', price: 200, desc: 'Slow time 10s' },
+  x2: { name: '2x Coins', emoji: '✨', price: 250, desc: 'Double coins 15s' }
+};
+
+const ACHIEVEMENTS = [
+  { id: 'first_game', name: 'First Steps', desc: 'Play your first game', icon: '🎮', reward: 50, check: s => s.gamesPlayed >= 1 },
+  { id: 'dist_100', name: 'Getting Started', desc: 'Reach 100m in one run', icon: '🏃', reward: 100, check: s => s.best >= 100 },
+  { id: 'dist_500', name: 'Marathon Runner', desc: 'Reach 500m in one run', icon: '🏅', reward: 250, check: s => s.best >= 500 },
+  { id: 'dist_1000', name: 'Legend', desc: 'Reach 1000m in one run', icon: '👑', reward: 500, check: s => s.best >= 1000 },
+  { id: 'coins_500', name: 'Coin Collector', desc: 'Collect 500 coins total', icon: '🪙', reward: 100, check: s => s.totalCoins >= 500 },
+  { id: 'coins_2000', name: 'Rich', desc: 'Collect 2000 coins total', icon: '💰', reward: 300, check: s => s.totalCoins >= 2000 },
+  { id: 'games_10', name: 'Dedicated', desc: 'Play 10 games', icon: '🎯', reward: 150, check: s => s.gamesPlayed >= 10 },
+  { id: 'games_50', name: 'Addicted', desc: 'Play 50 games', icon: '🔥', reward: 400, check: s => s.gamesPlayed >= 50 },
+  { id: 'level_5', name: 'Bridge Master', desc: 'Reach level 5', icon: '🌉', reward: 200, check: s => s.best >= 400 },
+  { id: 'skin_3', name: 'Fashionista', desc: 'Own 3 skins', icon: '👗', reward: 200, check: s => s.ownedSkins.length >= 3 },
+  { id: 'skin_all', name: 'Collector', desc: 'Own all skins', icon: '🏆', reward: 1000, check: s => s.ownedSkins.length >= SKINS.length },
+  { id: 'streak_7', name: 'Loyal', desc: '7-day login streak', icon: '📅', reward: 500, check: s => s.dailyStreak >= 7 }
+];
+
+const DAILY_REWARDS = [50, 75, 100, 150, 200, 300, 500];
+
+// ========== AUDIO SYSTEM ==========
+class AudioSystem {
+  constructor() {
+    this.ctx = null;
+    this.sfxEnabled = true;
+    this.musicEnabled = true;
+    this.musicGain = null;
+    this.musicOsc = null;
+    this.musicPlaying = false;
+  }
+  init() {
+    if (this.ctx) return;
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = 0.5;
+      this.masterGain.connect(this.ctx.destination);
+    } catch(e) {}
+  }
+  resume() {
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(()=>{});
+  }
+  tone(freq, duration, type = 'sine', volume = 0.15, delay = 0) {
+    if (!this.sfxEnabled || !this.ctx) return;
+    try {
+      const t = this.ctx.currentTime + delay;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(volume, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + duration);
+    } catch(e) {}
+  }
+  coin(combo = 1) {
+    const base = 600 + Math.min(combo, 10) * 50;
+    this.tone(base, 0.08, 'sine', 0.15);
+    this.tone(base * 1.5, 0.08, 'sine', 0.12, 0.04);
+  }
+  fall() {
+    this.tone(300, 0.15, 'sawtooth', 0.2);
+    this.tone(150, 0.3, 'sawtooth', 0.15, 0.1);
+  }
+  levelUp() {
+    this.tone(523, 0.1, 'sine', 0.2);
+    this.tone(659, 0.1, 'sine', 0.2, 0.1);
+    this.tone(784, 0.15, 'sine', 0.2, 0.2);
+    this.tone(1047, 0.2, 'sine', 0.2, 0.3);
+  }
+  click() { this.tone(800, 0.05, 'square', 0.08); }
+  purchase() {
+    this.tone(523, 0.08, 'sine', 0.15);
+    this.tone(784, 0.08, 'sine', 0.15, 0.06);
+    this.tone(1047, 0.12, 'sine', 0.15, 0.12);
+  }
+  achievement() {
+    this.tone(659, 0.1, 'sine', 0.2);
+    this.tone(784, 0.1, 'sine', 0.2, 0.1);
+    this.tone(1047, 0.2, 'sine', 0.2, 0.2);
+    this.tone(1319, 0.3, 'sine', 0.2, 0.3);
+  }
+  powerup() {
+    this.tone(440, 0.1, 'sine', 0.2);
+    this.tone(880, 0.15, 'sine', 0.2, 0.08);
+  }
+  revive() {
+    this.tone(523, 0.15, 'sine', 0.2);
+    this.tone(659, 0.15, 'sine', 0.2, 0.15);
+    this.tone(784, 0.2, 'sine', 0.2, 0.3);
+  }
+  startMusic() {
+    if (!this.musicEnabled || !this.ctx || this.musicPlaying) return;
+    try {
+      this.musicGain = this.ctx.createGain();
+      this.musicGain.gain.value = 0.04;
+      this.musicGain.connect(this.masterGain);
+      
+      // Simple ambient pad
+      const notes = [261.63, 329.63, 392.00, 523.25]; // C E G C
+      this.musicOscs = notes.map(freq => {
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const g = this.ctx.createGain();
+        g.gain.value = 0.3;
+        osc.connect(g);
+        g.connect(this.musicGain);
+        osc.start();
+        return { osc, gain: g };
+      });
+      this.musicPlaying = true;
+    } catch(e) {}
+  }
+  stopMusic() {
+    if (this.musicOscs) {
+      this.musicOscs.forEach(o => {
+        try { o.osc.stop(); } catch(e) {}
+      });
+      this.musicOscs = null;
+    }
+    this.musicPlaying = false;
+  }
+}
+const audio = new AudioSystem();
+
+// ========== THREE.JS SETUP ==========
+const canvas = document.getElementById('gameCanvas');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+scene.fog = new THREE.Fog(0x87ceeb, 40, 150);
+
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+// ========== LIGHTING ==========
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
+sunLight.position.set(50, 80, 30);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(1024, 1024);
+sunLight.shadow.camera.left = -50; sunLight.shadow.camera.right = 50;
+sunLight.shadow.camera.top = 50; sunLight.shadow.camera.bottom = -50;
+sunLight.shadow.camera.near = 1; sunLight.shadow.camera.far = 200;
+scene.add(sunLight);
+scene.add(sunLight.target);
+scene.add(new THREE.HemisphereLight(0x87ceeb, 0x3a5f3a, 0.4));
+
+// ========== ENVIRONMENT ==========
+const water = new THREE.Mesh(
+  new THREE.PlaneGeometry(2000, 2000),
+  new THREE.MeshStandardMaterial({ color: 0x2a6ea8, roughness: 0.3, metalness: 0.1 })
+);
+water.rotation.x = -Math.PI / 2;
+water.position.y = -40;
+water.receiveShadow = true;
+scene.add(water);
+
+// Mountains
+for (let i = 0; i < 12; i++) {
+  const s = 0.5 + Math.random() * 1.5;
+  const m = new THREE.Mesh(
+    new THREE.ConeGeometry(8 * s, 20 * s, 6),
+    new THREE.MeshStandardMaterial({ color: 0x4a5f4a, flatShading: true, roughness: 0.9 })
+  );
+  m.position.set((Math.random() - 0.5) * 300, -30, -100 + Math.random() * 300);
+  scene.add(m);
+}
+
+// Clouds
+const clouds = [];
+for (let i = 0; i < 15; i++) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, transparent: true, opacity: 0.85 });
+  for (let j = 0; j < 5; j++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(2 + Math.random() * 3, 7, 7), mat);
+    s.position.set((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 6);
+    g.add(s);
+  }
+  g.position.set((Math.random() - 0.5) * 250, 25 + Math.random() * 30, -100 + Math.random() * 250);
+  scene.add(g);
+  clouds.push(g);
+}
+
+// ========== FOOTBALL ==========
+function createFootballTexture(colors) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = colors[0];
+  ctx.fillRect(0, 0, 512, 256);
+  ctx.fillStyle = colors[1];
+  for (let i = 0; i < 20; i++) {
+    const x = Math.random() * 512, y = Math.random() * 256, size = 15 + Math.random() * 10;
+    ctx.beginPath();
+    for (let j = 0; j < 5; j++) {
+      const a = (j * Math.PI * 2) / 5;
+      const px = x + Math.cos(a) * size, py = y + Math.sin(a) * size;
+      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+const ballGeo = new THREE.SphereGeometry(0.6, 24, 24);
+let ballMat = new THREE.MeshStandardMaterial({ 
+  map: createFootballTexture(SKINS[0].colors), 
+  roughness: 0.5,
+  metalness: 0.1
+});
+const ball = new THREE.Mesh(ballGeo, ballMat);
+ball.castShadow = true;
+scene.add(ball);
+
+// Trail effect
+const trailPoints = [];
+const trailGeo = new THREE.BufferGeometry();
+const trailMat = new THREE.LineBasicMaterial({ color: 0xffd54a, transparent: true, opacity: 0.5 });
+const trail = new THREE.Line(trailGeo, trailMat);
+scene.add(trail);
+
+function updateBallSkin() {
+  const skin = SKINS.find(s => s.id === save.equippedSkin) || SKINS[0];
+  ballMat.map = createFootballTexture(skin.colors);
+  ballMat.needsUpdate = true;
+}
+updateBallSkin();
+
+// ========== BRIDGE ==========
+const bridgeGroup = new THREE.Group();
+scene.add(bridgeGroup);
+
+const plankMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8 });
+const railMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.9 });
+const coinMat = new THREE.MeshStandardMaterial({ 
+  color: 0xffd54a, roughness: 0.3, metalness: 0.8,
+  emissive: 0xffd54a, emissiveIntensity: 0.3
+});
+const powerupMats = {
+  shield: new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x3b82f6, emissiveIntensity: 0.5, metalness: 0.5 }),
+  magnet: new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.5, metalness: 0.5 }),
+  slowmo: new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0xa855f7, emissiveIntensity: 0.5, metalness: 0.5 }),
+  x2: new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.5, metalness: 0.5 })
+};
+
+let segments = [];
+let coins = [];
+let powerups = [];
+let nextZ = 0;
+
+function createSegment(opts) {
+  const width = opts.width || 3;
+  const length = opts.length || 2.5;
+  
+  const plank = new THREE.Mesh(new THREE.BoxGeometry(width, 0.3, length), plankMat);
+  plank.position.set(opts.x || 0, 0, nextZ + length / 2);
+  plank.castShadow = true; plank.receiveShadow = true;
+  bridgeGroup.add(plank);
+  
+  const railGeo = new THREE.BoxGeometry(0.2, 1.2, length);
+  const railLeft = new THREE.Mesh(railGeo, railMat);
+  railLeft.position.set(-width / 2 - 0.1, 0.6, nextZ + length / 2);
+  bridgeGroup.add(railLeft);
+  
+  const railRight = new THREE.Mesh(railGeo, railMat);
+  railRight.position.set(width / 2 + 0.1, 0.6, nextZ + length / 2);
+  bridgeGroup.add(railRight);
+  
+  const segment = {
+    plank, railLeft, railRight,
+    baseX: opts.x || 0,
+    zStart: nextZ, zEnd: nextZ + length,
+    width,
+    moving: opts.moving || false,
+    moveAmp: opts.moveAmp || 0,
+    moveSpeed: opts.moveSpeed || 1,
+    phase: Math.random() * Math.PI * 2
+  };
+  segments.push(segment);
+  nextZ += length;
+  
+  // Spawn coin
+  if (Math.random() < 0.35) {
+    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16), coinMat);
+    coin.position.set(
+      (opts.x || 0) + (Math.random() - 0.5) * (width - 1),
+      1.5,
+      nextZ - length / 2
+    );
+    coin.rotation.x = Math.PI / 2;
+    bridgeGroup.add(coin);
+    coins.push({ mesh: coin, collected: false });
+  }
+  
+  // Spawn powerup (rare)
+  if (Math.random() < 0.05) {
+    const types = Object.keys(POWERUPS_DEF);
+    const type = types[Math.floor(Math.random() * types.length)];
+    const pu = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), powerupMats[type]);
+    pu.position.set(
+      (opts.x || 0) + (Math.random() - 0.5) * (width - 1),
+      1.8,
+      nextZ - length / 2
+    );
+    bridgeGroup.add(pu);
+    powerups.push({ mesh: pu, type, collected: false });
+  }
+}
+
+function generateLevel(level) {
+  while (bridgeGroup.children.length > 0) {
+    const child = bridgeGroup.children[0];
+    bridgeGroup.remove(child);
+    if (child.geometry) child.geometry.dispose();
+  }
+  segments = [];
+  coins = [];
+  powerups = [];
+  nextZ = 0;
+  
+  createSegment({ width: 5, length: 6 });
+  
+  const totalLength = 200 + level * 50;
+  let z = nextZ;
+  
+  while (z < totalLength) {
+    const difficulty = Math.min(level / 10, 1);
+    const rand = Math.random();
+    const width = Math.max(2, 5 - difficulty * 2 - Math.random() * 1.5);
+    const length = 2.5 + Math.random() * 1.5;
+    
+    if (rand < 0.1 + difficulty * 0.1) {
+      createSegment({ width, length, moving: true, moveAmp: 1 + difficulty * 2, moveSpeed: 0.8 + Math.random() * 0.8 + difficulty * 0.5 });
+    } else if (rand < 0.3) {
+      createSegment({ width, length, x: (Math.random() - 0.5) * Math.min(3, 1 + difficulty * 2) });
+    } else {
+      createSegment({ width, length });
+    }
+    z = nextZ;
+  }
+  return totalLength;
+}
+
+// ========== PARTICLES ==========
+const particles = [];
+function spawnParticles(position, color, count = 10) {
+  for (let i = 0; i < count; i++) {
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), mat);
+    mesh.position.copy(position);
+    scene.add(mesh);
+    particles.push({
+      mesh, mat,
+      velocity: new THREE.Vector3((Math.random()-0.5)*6, Math.random()*6, (Math.random()-0.5)*6),
+      life: 1, maxLife: 1
+    });
+  }
+}
+
+// ========== GAME STATE ==========
+const state = {
+  running: false,
+  paused: false,
+  speed: 5,
+  level: 1,
+  distance: 0,
+  runCoins: 0,
+  levelEnd: 0,
+  lateralVelocity: 0,
+  falling: false,
+  fallVelocity: 0,
+  time: 0,
+  combo: 0,
+  bestCombo: 0,
+  lastCoinTime: 0,
+  // Active powerups
+  activePowerups: { shield: false, magnet: false, slowmo: false, x2: false },
+  powerupTimers: { shield: 0, magnet: 0, slowmo: 0, x2: 0 },
+  revived: false,
+  shakeAmount: 0
+};
+
+// ========== INPUT ==========
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key === 'Escape' && state.running && !state.falling) togglePause();
+  if (e.key === 'p' || e.key === 'P') if (state.running) togglePause();
+});
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+const touchInput = { left: false, right: false };
+const leftZone = document.getElementById('leftZone');
+const rightZone = document.getElementById('rightZone');
+
+function handleGameTouch(e) {
+  if (!state.running || state.paused) return;
+  e.preventDefault();
+  touchInput.left = false;
+  touchInput.right = false;
+  for (let i = 0; i < e.touches.length; i++) {
+    if (e.touches[i].clientX < window.innerWidth / 2) touchInput.left = true;
+    else touchInput.right = true;
+  }
+  leftZone.classList.toggle('active', touchInput.left);
+  rightZone.classList.toggle('active', touchInput.right);
+}
+canvas.addEventListener('touchstart', handleGameTouch, { passive: false });
+canvas.addEventListener('touchmove', handleGameTouch, { passive: false });
+canvas.addEventListener('touchend', handleGameTouch, { passive: false });
+canvas.addEventListener('touchcancel', handleGameTouch, { passive: false });
+
+document.addEventListener('touchstart', function(e) {
+  const target = e.target;
+  if (target.tagName === 'BUTTON' || target.closest('.overlay')) return;
+  if (!state.running || state.paused) return;
+  touchInput.left = false;
+  touchInput.right = false;
+  for (let i = 0; i < e.touches.length; i++) {
+    if (e.touches[i].clientX < window.innerWidth / 2) touchInput.left = true;
+    else touchInput.right = true;
+  }
+  leftZone.classList.toggle('active', touchInput.left);
+  rightZone.classList.toggle('active', touchInput.right);
+}, { passive: true });
+
+document.addEventListener('touchend', function(e) {
+  if (e.touches.length === 0) {
+    touchInput.left = false;
+    touchInput.right = false;
+    leftZone.classList.remove('active');
+    rightZone.classList.remove('active');
+  }
+}, { passive: true });
+
+// ========== UI HELPERS ==========
+const hud = document.getElementById('hud');
+const pauseBtn = document.getElementById('pauseBtn');
+const comboDisplay = document.getElementById('comboDisplay');
+const powerupIndicator = document.getElementById('powerupIndicator');
+const toastContainer = document.getElementById('toastContainer');
+
+function updateHUD() {
+  document.getElementById('levelDisplay').textContent = state.level;
+  document.getElementById('distDisplay').textContent = Math.floor(state.distance) + 'm';
+  document.getElementById('coinDisplay').textContent = state.runCoins;
+  document.getElementById('bestDisplay').textContent = save.best + 'm';
+}
+function updateMenuCurrency() {
+  document.getElementById('menuCoins').textContent = save.coins;
+  document.getElementById('menuBest').textContent = save.best + 'm';
+  document.getElementById('shopCoins').textContent = save.coins;
+}
+
+function showToast(text, duration = 3000) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = text;
+  toastContainer.appendChild(toast);
+  setTimeout(() => toast.remove(), duration);
+}
+
+function showCombo(combo) {
+  comboDisplay.textContent = combo + 'x COMBO!';
+  comboDisplay.classList.add('show');
+  clearTimeout(showCombo.timer);
+  showCombo.timer = setTimeout(() => comboDisplay.classList.remove('show'), 1500);
+}
+
+function showPowerup(name, duration) {
+  powerupIndicator.textContent = POWERUPS_DEF[name].emoji + ' ' + POWERUPS_DEF[name].name + ' ' + Math.ceil(duration) + 's';
+  powerupIndicator.classList.add('show');
+}
+function hidePowerup() {
+  powerupIndicator.classList.remove('show');
+}
+
+function vibrate(ms) {
+  if (save.settings.vibration && navigator.vibrate) {
+    try { navigator.vibrate(ms); } catch(e) {}
+  }
+}
+
+function screenShake() {
+  if (!save.settings.shake) return;
+  canvas.classList.remove('shake');
+  void canvas.offsetWidth;
+  canvas.classList.add('shake');
+}
+
+// ========== SCREENS ==========
+const screens = {
+  menu: document.getElementById('menuScreen'),
+  shop: document.getElementById('shopScreen'),
+  achievements: document.getElementById('achievementsScreen'),
+  daily: document.getElementById('dailyScreen'),
+  settings: document.getElementById('settingsScreen'),
+  pause: document.getElementById('pauseScreen'),
+  gameOver: document.getElementById('gameOverScreen'),
+  tutorial: document.getElementById('tutorialScreen')
+};
+
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.add('hidden'));
+  if (name && screens[name]) screens[name].classList.remove('hidden');
+}
+
+// ========== GAME FLOW ==========
+function startGame() {
+  audio.init();
+  audio.resume();
+  audio.startMusic();
+  
+  state.running = true;
+  state.paused = false;
+  state.speed = 5;
+  state.level = 1;
+  state.distance = 0;
+  state.runCoins = 0;
+  state.falling = false;
+  state.fallVelocity = 0;
+  state.lateralVelocity = 0;
+  state.time = 0;
+  state.combo = 0;
+  state.bestCombo = 0;
+  state.lastCoinTime = 0;
+  state.activePowerups = { shield: false, magnet: false, slowmo: false, x2: false };
+  state.powerupTimers = { shield: 0, magnet: 0, slowmo: 0, x2: 0 };
+  state.revived = false;
+  state.shakeAmount = 0;
+  
+  ball.position.set(0, 0.75, 3);
+  ball.rotation.set(0, 0, 0);
+  
+  state.levelEnd = generateLevel(1);
+  
+  showScreen(null);
+  hud.classList.add('visible');
+  pauseBtn.classList.add('visible');
+  
+  save.gamesPlayed++;
+  saveSave();
+  
+  updateHUD();
+  checkAchievements();
+}
+
+function gameOver() {
+  state.running = false;
+  audio.fall();
+  audio.stopMusic();
+  vibrate(200);
+  screenShake();
+  
+  const isNewRecord = state.distance > save.best;
+  if (isNewRecord) {
+    save.best = Math.floor(state.distance);
+  }
+  save.coins += state.runCoins;
+  save.totalCoins += state.runCoins;
+  save.totalDistance += Math.floor(state.distance);
+  saveSave();
+  
+  document.getElementById('finalLevel').textContent = state.level;
+  document.getElementById('finalDist').textContent = Math.floor(state.distance) + 'm';
+  document.getElementById('finalCoins').textContent = state.runCoins;
+  document.getElementById('finalCombo').textContent = state.bestCombo + 'x';
+  document.getElementById('newRecordBadge').classList.toggle('hidden', !isNewRecord);
+  
+  hud.classList.remove('visible');
+  pauseBtn.classList.remove('visible');
+  showScreen('gameOver');
+  
+  updateMenuCurrency();
+  checkAchievements();
+}
+
+function togglePause() {
+  if (!state.running || state.falling) return;
+  state.paused = !state.paused;
+  if (state.paused) {
+    showScreen('pause');
+    audio.stopMusic();
+  } else {
+    showScreen(null);
+    hud.classList.add('visible');
+    pauseBtn.classList.add('visible');
+    audio.startMusic();
+  }
+}
+
+function revive() {
+  // Simulated ad watch
+  if (state.revived) {
+    showToast('Already revived once!');
+    return;
+  }
+  state.revived = true;
+  audio.revive();
+  
+  state.falling = false;
+  state.fallVelocity = 0;
+  // Place ball back on nearest safe segment
+  let bestSeg = null;
+  let bestDist = Infinity;
+  for (const seg of segments) {
+    const d = Math.abs(seg.zStart - ball.position.z);
+    if (d < bestDist) { bestDist = d; bestSeg = seg; }
+  }
+  if (bestSeg) {
+    ball.position.set(bestSeg.plank.position.x, 0.75, bestSeg.zStart + 1);
+  } else {
+    ball.position.set(0, 0.75, 3);
+  }
+  state.lateralVelocity = 0;
+  
+  showScreen(null);
+  hud.classList.add('visible');
+  pauseBtn.classList.add('visible');
+  audio.startMusic();
+  showToast('🎉 Revived!');
+  vibrate(50);
+}
+
+// ========== SHOP ==========
+function renderShop() {
+  const skinsGrid = document.getElementById('skinsGrid');
+  skinsGrid.innerHTML = '';
+  SKINS.forEach(skin => {
+    const owned = save.ownedSkins.includes(skin.id);
+    const equipped = save.equippedSkin === skin.id;
+    const item = document.createElement('div');
+    item.className = 'shop-item' + (equipped ? ' equipped' : '') + (!owned ? ' locked' : '');
+    item.innerHTML = `
+      <div class="shop-preview" style="background: linear-gradient(135deg, ${skin.colors[0]} 0%, ${skin.colors[1]} 100%);">⚽</div>
+      <div class="shop-name">${skin.name}</div>
+      <div class="shop-price ${owned ? 'owned' : ''}">${equipped ? '✓ Equipped' : owned ? 'Owned' : '🪙 ' + skin.price}</div>
+    `;
+    item.onclick = () => {
+      audio.click();
+      if (owned) {
+        save.equippedSkin = skin.id;
+        updateBallSkin();
+        saveSave();
+        renderShop();
+        showToast('Equipped: ' + skin.name);
+      } else if (save.coins >= skin.price) {
+        save.coins -= skin.price;
+        save.ownedSkins.push(skin.id);
+        save.equippedSkin = skin.id;
+        updateBallSkin();
+        saveSave();
+        renderShop();
+        updateMenuCurrency();
+        audio.purchase();
+        showToast('🎉 Unlocked: ' + skin.name);
+        checkAchievements();
+      } else {
+        showToast('Not enough coins!');
+      }
+    };
+    skinsGrid.appendChild(item);
+  });
+  
+  const puGrid = document.getElementById('powerupsGrid');
+  puGrid.innerHTML = '';
+  Object.entries(POWERUPS_DEF).forEach(([id, def]) => {
+    const count = save.powerups[id] || 0;
+    const item = document.createElement('div');
+    item.className = 'shop-item';
+    item.innerHTML = `
+      <div class="shop-preview">${def.emoji}</div>
+      <div class="shop-name">${def.name}</div>
+      <div class="shop-price">🪙 ${def.price} · Owned: ${count}</div>
+    `;
+    item.onclick = () => {
+      audio.click();
+      if (save.coins >= def.price) {
+        save.coins -= def.price;
+        save.powerups[id] = (save.powerups[id] || 0) + 1;
+        saveSave();
+        renderShop();
+        updateMenuCurrency();
+        audio.purchase();
+        showToast('Bought: ' + def.name);
+      } else {
+        showToast('Not enough coins!');
+      }
+    };
+    puGrid.appendChild(item);
+  });
+}
+
+// ========== ACHIEVEMENTS ==========
+function renderAchievements() {
+  const list = document.getElementById('achievementList');
+  list.innerHTML = '';
+  let unlocked = 0;
+  ACHIEVEMENTS.forEach(ach => {
+    const done = save.achievements[ach.id];
+    if (done) unlocked++;
+    const el = document.createElement('div');
+    el.className = 'achievement ' + (done ? 'unlocked' : 'locked');
+    el.innerHTML = `
+      <div class="ach-icon">${ach.icon}</div>
+      <div class="ach-info">
+        <div class="ach-name">${ach.name} ${done ? '✓' : ''}</div>
+        <div class="ach-desc">${ach.desc}</div>
+        <div class="ach-reward">Reward: 🪙 ${ach.reward}</div>
+      </div>
+    `;
+    list.appendChild(el);
+  });
+  document.getElementById('achUnlocked').textContent = unlocked;
+  document.getElementById('achTotal').textContent = ACHIEVEMENTS.length;
+}
+
+function checkAchievements() {
+  ACHIEVEMENTS.forEach(ach => {
+    if (!save.achievements[ach.id] && ach.check(save)) {
+      save.achievements[ach.id] = true;
+      save.coins += ach.reward;
+      saveSave();
+      audio.achievement();
+      showToast('🏅 ' + ach.name + ' +' + ach.reward + '🪙');
+      updateMenuCurrency();
+    }
+  });
+}
+
+// ========== DAILY REWARDS ==========
+function renderDaily() {
+  const grid = document.getElementById('dailyGrid');
+  grid.innerHTML = '';
+  const today = new Date().toDateString();
+  const lastDaily = new Date(save.lastDaily).toDateString();
+  const canClaim = today !== lastDaily;
+  
+  // Check streak
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toDateString();
+  const lastWasYesterday = lastDaily === yesterdayStr;
+  const lastWasToday = lastDaily === today;
+  
+  if (!lastWasYesterday && !lastWasToday && save.lastDaily !== 0) {
+    save.dailyStreak = 0;
+  }
+  
+  for (let i = 0; i < 7; i++) {
+    const day = document.createElement('div');
+    const claimed = i < save.dailyStreak || (i === save.dailyStreak && lastWasToday);
+    const isToday = i === save.dailyStreak && canClaim;
+    day.className = 'daily-day' + (claimed ? ' claimed' : '') + (isToday ? ' today' : '');
+    day.innerHTML = `
+      <div class="daily-day-num">Day ${i+1}</div>
+      <div class="daily-day-reward">🪙</div>
+      <div class="daily-day-amount">${DAILY_REWARDS[i]}</div>
+    `;
+    grid.appendChild(day);
+  }
+  
+  const claimBtn = document.getElementById('claimDailyBtn');
+  claimBtn.disabled = !canClaim;
+  claimBtn.textContent = canClaim ? 'Claim Today\'s Reward' : 'Come back tomorrow!';
+  claimBtn.style.opacity = canClaim ? '1' : '0.5';
+}
+
+function claimDaily() {
+  const today = new Date().toDateString();
+  const lastDaily = new Date(save.lastDaily).toDateString();
+  if (today === lastDaily) return;
+  
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (lastDaily !== yesterday.toDateString() && save.lastDaily !== 0) {
+    save.dailyStreak = 0;
+  }
+  
+  const reward = DAILY_REWARDS[Math.min(save.dailyStreak, 6)];
+  save.coins += reward;
+  save.dailyStreak = Math.min(save.dailyStreak + 1, 7);
+  save.lastDaily = Date.now();
+  saveSave();
+  
+  audio.purchase();
+  showToast('🎁 +' + reward + ' coins!');
+  renderDaily();
+  updateMenuCurrency();
+  checkAchievements();
+}
+
+// ========== SETTINGS ==========
+function renderSettings() {
+  document.getElementById('sfxToggle').classList.toggle('on', save.settings.sfx);
+  document.getElementById('musicToggle').classList.toggle('on', save.settings.music);
+  document.getElementById('vibrationToggle').classList.toggle('on', save.settings.vibration);
+  document.getElementById('shakeToggle').classList.toggle('on', save.settings.shake);
+}
+
+function toggleSetting(key) {
+  save.settings[key] = !save.settings[key];
+  audio[key === 'sfx' ? 'sfxEnabled' : key === 'music' ? 'musicEnabled' : null] = save.settings[key];
+  if (key === 'music') {
+    if (save.settings.music && state.running && !state.paused) audio.startMusic();
+    else audio.stopMusic();
+  }
+  saveSave();
+  renderSettings();
+  audio.click();
+}
+
+// ========== SHARE ==========
+function shareScore() {
+  const text = `🏆 I just scored ${save.best}m in Football Bridge! Can you beat me? ⚽🌉`;
+  if (navigator.share) {
+    navigator.share({ title: 'Football Bridge', text }).catch(()=>{});
+  } else {
+    // Fallback: copy to clipboard
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('📋 Copied to clipboard!');
+    }).catch(() => {
+      showToast(text);
+    });
+  }
+}
+
+// ========== EVENT LISTENERS ==========
+document.getElementById('playBtn').onclick = () => {
+  audio.click();
+  if (!save.tutorialSeen) {
+    showScreen('tutorial');
+  } else {
+    startGame();
+  }
+};
+document.getElementById('shopBtn').onclick = () => { audio.click(); renderShop(); showScreen('shop'); };
+document.getElementById('achievementsBtn').onclick = () => { audio.click(); renderAchievements(); showScreen('achievements'); };
+document.getElementById('dailyBtn').onclick = () => { audio.click(); renderDaily(); showScreen('daily'); };
+document.getElementById('settingsBtn').onclick = () => { audio.click(); renderSettings(); showScreen('settings'); };
+document.getElementById('shareBtn').onclick = () => { audio.click(); shareScore(); };
+
+document.getElementById('shopBackBtn').onclick = () => { audio.click(); showScreen('menu'); };
+document.getElementById('achBackBtn').onclick = () => { audio.click(); showScreen('menu'); };
+document.getElementById('dailyBackBtn').onclick = () => { audio.click(); showScreen('menu'); };
+document.getElementById('settingsBackBtn').onclick = () => { audio.click(); showScreen('menu'); };
+document.getElementById('claimDailyBtn').onclick = () => { audio.click(); claimDaily(); };
+
+document.getElementById('sfxToggle').onclick = () => toggleSetting('sfx');
+document.getElementById('musicToggle').onclick = () => toggleSetting('music');
+document.getElementById('vibrationToggle').onclick = () => toggleSetting('vibration');
+document.getElementById('shakeToggle').onclick = () => toggleSetting('shake');
+document.getElementById('resetBtn').onclick = () => {
+  if (confirm('Reset ALL progress? This cannot be undone!')) {
+    save = JSON.parse(JSON.stringify(defaultSave));
+    saveSave();
+    updateBallSkin();
+    updateMenuCurrency();
+    renderSettings();
+    showToast('Progress reset');
+  }
+};
+
+document.getElementById('tutorialDoneBtn').onclick = () => {
+  audio.click();
+  save.tutorialSeen = true;
+  saveSave();
+  startGame();
+};
+
+document.getElementById('pauseBtn').onclick = () => { audio.click(); togglePause(); };
+document.getElementById('resumeBtn').onclick = () => { audio.click(); togglePause(); };
+document.getElementById('restartFromPauseBtn').onclick = () => { audio.click(); state.paused = false; startGame(); };
+document.getElementById('quitBtn').onclick = () => {
+  audio.click();
+  state.running = false;
+  state.paused = false;
+  audio.stopMusic();
+  hud.classList.remove('visible');
+  pauseBtn.classList.remove('visible');
+  updateMenuCurrency();
+  showScreen('menu');
+};
+
+document.getElementById('restartBtn').onclick = () => { audio.click(); startGame(); };
+document.getElementById('menuBtn').onclick = () => {
+  audio.click();
+  updateMenuCurrency();
+  showScreen('menu');
+};
+document.getElementById('reviveBtn').onclick = () => { audio.click(); revive(); };
+document.getElementById('goShareBtn').onclick = () => { audio.click(); shareScore(); };
+
+// ========== MAIN LOOP ==========
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  
+  let dt = Math.min(clock.getDelta(), 0.05);
+  if (state.paused) dt = 0;
+  
+  // Slow-mo effect
+  if (state.activePowerups.slowmo) dt *= 0.5;
+  
+  state.time += dt;
+  
+  // Clouds
+  clouds.forEach(cloud => {
+    cloud.position.x += dt * 2;
+    if (cloud.position.x > 125) cloud.position.x = -125;
+  });
+  
+  // Particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.mesh.position.add(p.velocity.clone().multiplyScalar(dt));
+    p.velocity.y -= 10 * dt;
+    p.life -= dt;
+    p.mat.opacity = p.life / p.maxLife;
+    if (p.life <= 0) {
+      scene.remove(p.mesh);
+      p.mesh.geometry.dispose();
+      p.mat.dispose();
+      particles.splice(i, 1);
+    }
+  }
+  
+  if (state.running) {
+    let input = 0;
+    if (keys['a'] || keys['arrowleft'] || touchInput.left) input -= 1;
+    if (keys['d'] || keys['arrowright'] || touchInput.right) input += 1;
+    
+    if (!state.falling) {
+      const targetVelocity = input * 10;
+      state.lateralVelocity += (targetVelocity - state.lateralVelocity) * 8 * dt;
+      
+      const speed = state.activePowerups.slowmo ? state.speed * 0.5 : state.speed;
+      ball.position.z += speed * dt;
+      ball.position.x += state.lateralVelocity * dt;
+      
+      ball.rotation.x -= speed * dt / 0.6;
+      ball.rotation.z -= state.lateralVelocity * dt / 0.6;
+      
+      // Trail
+      trailPoints.push(ball.position.clone());
+      if (trailPoints.length > 20) trailPoints.shift();
+      trailGeo.setFromPoints(trailPoints);
+      
+      // Moving segments
+      segments.forEach(seg => {
+        if (seg.moving) {
+          const newX = seg.baseX + Math.sin(state.time * seg.moveSpeed + seg.phase) * seg.moveAmp;
+          seg.plank.position.x = newX;
+          seg.railLeft.position.x = newX - seg.width / 2 - 0.1;
+          seg.railRight.position.x = newX + seg.width / 2 + 0.1;
+        }
+      });
+      
+      // Coins animation
+      coins.forEach(coin => {
+        if (!coin.collected) {
+          coin.mesh.rotation.z += dt * 2;
+          coin.mesh.position.y = 1.5 + Math.sin(state.time * 3 + coin.mesh.position.z) * 0.2;
+          
+          // Magnet effect
+          if (state.activePowerups.magnet) {
+            const dist = ball.position.distanceTo(coin.mesh.position);
+            if (dist < 8) {
+              const dir = ball.position.clone().sub(coin.mesh.position).normalize();
+              coin.mesh.position.add(dir.multiplyScalar(dt * 15));
+            }
+          }
+        }
+      });
+      
+      // Powerups animation
+      powerups.forEach(pu => {
+        if (!pu.collected) {
+          pu.mesh.rotation.y += dt * 2;
+          pu.mesh.rotation.x += dt;
+          pu.mesh.position.y = 1.8 + Math.sin(state.time * 2 + pu.mesh.position.z) * 0.3;
+        }
+      });
+      
+      // Collision
+      let onBridge = false;
+      for (const seg of segments) {
+        if (ball.position.z >= seg.zStart && ball.position.z <= seg.zEnd) {
+          const halfWidth = seg.width / 2 - 0.5;
+          const segX = seg.plank.position.x;
+          if (Math.abs(ball.position.x - segX) <= halfWidth) {
+            onBridge = true;
+            ball.position.y = 0.15 + 0.6;
+          }
+          break;
+        }
+      }
+      
+      // Coin collection
+      coins.forEach(coin => {
+        if (!coin.collected) {
+          const dist = ball.position.distanceTo(coin.mesh.position);
+          if (dist < 1) {
+            coin.collected = true;
+            bridgeGroup.remove(coin.mesh);
+            
+            // Combo
+            if (state.time - state.lastCoinTime < 2) {
+              state.combo++;
+            } else {
+              state.combo = 1;
+            }
+            state.lastCoinTime = state.time;
+            state.bestCombo = Math.max(state.bestCombo, state.combo);
+            
+            const multiplier = state.activePowerups.x2 ? 2 : 1;
+            const comboBonus = Math.min(state.combo, 10);
+            const earned = Math.floor((1 + comboBonus * 0.5) * multiplier);
+            state.runCoins += earned;
+            
+            audio.coin(state.combo);
+            spawnParticles(coin.mesh.position, 0xffd54a, 12);
+            vibrate(20);
+            
+            if (state.combo > 1) showCombo(state.combo);
+            updateHUD();
+          }
+        }
+      });
+      
+      // Powerup collection
+      powerups.forEach(pu => {
+        if (!pu.collected) {
+          const dist = ball.position.distanceTo(pu.mesh.position);
+          if (dist < 1.2) {
+            pu.collected = true;
+            bridgeGroup.remove(pu.mesh);
+            state.activePowerups[pu.type] = true;
+            const durations = { shield: 999, magnet: 15, slowmo: 10, x2: 15 };
+            state.powerupTimers[pu.type] = durations[pu.type];
+            audio.powerup();
+            spawnParticles(pu.mesh.position, powerupMats[pu.type].color.getHex(), 20);
+            showToast(POWERUPS_DEF[pu.type].emoji + ' ' + POWERUPS_DEF[pu.type].name + ' activated!');
+            vibrate(50);
+          }
+        }
+      });
+      
+      // Update powerup timers
+      Object.keys(state.powerupTimers).forEach(key => {
+        if (state.powerupTimers[key] > 0 && state.powerupTimers[key] < 999) {
+          state.powerupTimers[key] -= dt;
+          if (state.powerupTimers[key] <= 0) {
+            state.activePowerups[key] = false;
+            hidePowerup();
+          } else {
+            showPowerup(key, state.powerupTimers[key]);
+          }
+        }
+      });
+      
+      if (!onBridge) {
+        if (state.activePowerups.shield) {
+          // Shield saves us - teleport to nearest safe segment
+          state.activePowerups.shield = false;
+          state.powerupTimers.shield = 0;
+          let bestSeg = null, bestDist = Infinity;
+          for (const seg of segments) {
+            const d = Math.abs(seg.zStart - ball.position.z);
+            if (d < bestDist) { bestDist = d; bestSeg = seg; }
+          }
+          if (bestSeg) {
+            ball.position.set(bestSeg.plank.position.x, 0.75, bestSeg.zStart + 1);
+          }
+          spawnParticles(ball.position, 0x3b82f6, 30);
+          showToast('🛡 Shield saved you!');
+          vibrate(100);
+          screenShake();
+        } else {
+          state.falling = true;
+        }
+      }
+      
+      state.distance = Math.max(state.distance, ball.position.z - 3);
+      state.speed = Math.min(12, 5 + state.distance * 0.005);
+      updateHUD();
+      
+      if (ball.position.z >= state.levelEnd - 5) {
+        state.level++;
+        audio.levelUp();
+        vibrate(100);
+        showToast('🎉 Level ' + state.level + '!');
+        const shift = ball.position.z - 3;
+        ball.position.z = 3;
+        segments.forEach(seg => {
+          seg.zStart -= shift; seg.zEnd -= shift;
+          seg.plank.position.z -= shift;
+          seg.railLeft.position.z -= shift;
+          seg.railRight.position.z -= shift;
+        });
+        coins.forEach(coin => coin.mesh.position.z -= shift);
+        powerups.forEach(pu => pu.mesh.position.z -= shift);
+        trailPoints.length = 0;
+        nextZ -= shift;
+        state.levelEnd = ball.position.z + generateLevel(state.level);
+      }
+      
+      if (ball.position.z > nextZ + 2) state.falling = true;
+    } else {
+      state.fallVelocity -= 30 * dt;
+      ball.position.y += state.fallVelocity * dt;
+      ball.rotation.x -= 5 * dt;
+      ball.rotation.z += 3 * dt;
+      if (ball.position.y < -35) gameOver();
+    }
+    
+    // Camera
+    const shakeX = state.shakeAmount * (Math.random() - 0.5);
+    const shakeY = state.shakeAmount * (Math.random() - 0.5);
+    state.shakeAmount *= 0.9;
+    
+    const targetCamX = ball.position.x * 0.3 + shakeX;
+    const targetCamZ = ball.position.z - 8;
+    camera.position.x += (targetCamX - camera.position.x) * 0.08;
+    camera.position.y += (5 - camera.position.y) * 0.08;
+    camera.position.z += (targetCamZ - camera.position.z) * 0.08;
+    camera.position.y += shakeY;
+    camera.lookAt(ball.position.x * 0.2, 1, ball.position.z + 6);
+    
+    sunLight.position.set(ball.position.x + 50, 80, ball.position.z + 30);
+    sunLight.target.position.set(ball.position.x, 0, ball.position.z);
+    sunLight.updateMatrixWorld();
+  }
+  
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clock.stop();
+    if (state.running && !state.paused) togglePause();
+  } else {
+    clock.start();
+  }
+});
+
+// ========== INIT ==========
+updateMenuCurrency();
+audio.sfxEnabled = save.settings.sfx;
+audio.musicEnabled = save.settings.music;
+animate();
+</script>
+</body>
+</html>
