@@ -109,6 +109,21 @@
   }
   #powerupIndicator.show { opacity: 1; }
 
+  /* Floating text effect */
+  .floating-text {
+    position: absolute;
+    font-weight: 900;
+    color: #ffd54a;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    pointer-events: none;
+    z-index: 150;
+    animation: floatUp 0.8s ease-out forwards;
+  }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50px) scale(1.3); }
+  }
+
   /* ===== OVERLAYS ===== */
   .overlay {
     position: absolute; inset: 0;
@@ -887,8 +902,7 @@ class AudioSystem {
       this.musicGain.gain.value = 0.04;
       this.musicGain.connect(this.masterGain);
       
-      // Simple ambient pad
-      const notes = [261.63, 329.63, 392.00, 523.25]; // C E G C
+      const notes = [261.63, 329.63, 392.00, 523.25];
       this.musicOscs = notes.map(freq => {
         const osc = this.ctx.createOscillator();
         osc.type = 'sine';
@@ -951,7 +965,6 @@ water.position.y = -40;
 water.receiveShadow = true;
 scene.add(water);
 
-// Mountains
 for (let i = 0; i < 12; i++) {
   const s = 0.5 + Math.random() * 1.5;
   const m = new THREE.Mesh(
@@ -962,7 +975,6 @@ for (let i = 0; i < 12; i++) {
   scene.add(m);
 }
 
-// Clouds
 const clouds = [];
 for (let i = 0; i < 15; i++) {
   const g = new THREE.Group();
@@ -1011,7 +1023,6 @@ const ball = new THREE.Mesh(ballGeo, ballMat);
 ball.castShadow = true;
 scene.add(ball);
 
-// Trail effect
 const trailPoints = [];
 const trailGeo = new THREE.BufferGeometry();
 const trailMat = new THREE.LineBasicMaterial({ color: 0xffd54a, transparent: true, opacity: 0.5 });
@@ -1078,7 +1089,6 @@ function createSegment(opts) {
   segments.push(segment);
   nextZ += length;
   
-  // Spawn coin
   if (Math.random() < 0.35) {
     const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16), coinMat);
     coin.position.set(
@@ -1091,7 +1101,6 @@ function createSegment(opts) {
     coins.push({ mesh: coin, collected: false });
   }
   
-  // Spawn powerup (rare)
   if (Math.random() < 0.05) {
     const types = Object.keys(POWERUPS_DEF);
     const type = types[Math.floor(Math.random() * types.length)];
@@ -1172,7 +1181,6 @@ const state = {
   combo: 0,
   bestCombo: 0,
   lastCoinTime: 0,
-  // Active powerups
   activePowerups: { shield: false, magnet: false, slowmo: false, x2: false },
   powerupTimers: { shield: 0, magnet: 0, slowmo: 0, x2: 0 },
   revived: false,
@@ -1232,12 +1240,28 @@ document.addEventListener('touchend', function(e) {
   }
 }, { passive: true });
 
-// ========== UI HELPERS ==========
+// ========== UI HELPERS & FLOATING TEXT ==========
 const hud = document.getElementById('hud');
 const pauseBtn = document.getElementById('pauseBtn');
 const comboDisplay = document.getElementById('comboDisplay');
 const powerupIndicator = document.getElementById('powerupIndicator');
 const toastContainer = document.getElementById('toastContainer');
+
+function showFloatingText(text, vector3Pos) {
+  const p = vector3Pos.clone();
+  p.project(camera);
+  const x = (p.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (p.y * -0.5 + 0.5) * window.innerHeight;
+
+  const el = document.createElement('div');
+  el.className = 'floating-text';
+  el.textContent = text;
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  document.body.appendChild(el);
+
+  setTimeout(() => el.remove(), 800);
+}
 
 function updateHUD() {
   document.getElementById('levelDisplay').textContent = state.level;
@@ -1389,7 +1413,6 @@ function togglePause() {
 }
 
 function revive() {
-  // Simulated ad watch
   if (state.revived) {
     showToast('Already revived once!');
     return;
@@ -1399,7 +1422,6 @@ function revive() {
   
   state.falling = false;
   state.fallVelocity = 0;
-  // Place ball back on nearest safe segment
   let bestSeg = null;
   let bestDist = Infinity;
   for (const seg of segments) {
@@ -1535,7 +1557,6 @@ function renderDaily() {
   const lastDaily = new Date(save.lastDaily).toDateString();
   const canClaim = today !== lastDaily;
   
-  // Check streak
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toDateString();
@@ -1615,7 +1636,6 @@ function shareScore() {
   if (navigator.share) {
     navigator.share({ title: 'Football Bridge', text }).catch(()=>{});
   } else {
-    // Fallback: copy to clipboard
     navigator.clipboard.writeText(text).then(() => {
       showToast('📋 Copied to clipboard!');
     }).catch(() => {
@@ -1699,18 +1719,15 @@ function animate() {
   let dt = Math.min(clock.getDelta(), 0.05);
   if (state.paused) dt = 0;
   
-  // Slow-mo effect
   if (state.activePowerups.slowmo) dt *= 0.5;
   
   state.time += dt;
   
-  // Clouds
   clouds.forEach(cloud => {
     cloud.position.x += dt * 2;
     if (cloud.position.x > 125) cloud.position.x = -125;
   });
   
-  // Particles
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.mesh.position.add(p.velocity.clone().multiplyScalar(dt));
@@ -1741,12 +1758,10 @@ function animate() {
       ball.rotation.x -= speed * dt / 0.6;
       ball.rotation.z -= state.lateralVelocity * dt / 0.6;
       
-      // Trail
       trailPoints.push(ball.position.clone());
       if (trailPoints.length > 20) trailPoints.shift();
       trailGeo.setFromPoints(trailPoints);
       
-      // Moving segments
       segments.forEach(seg => {
         if (seg.moving) {
           const newX = seg.baseX + Math.sin(state.time * seg.moveSpeed + seg.phase) * seg.moveAmp;
@@ -1756,13 +1771,11 @@ function animate() {
         }
       });
       
-      // Coins animation
       coins.forEach(coin => {
         if (!coin.collected) {
           coin.mesh.rotation.z += dt * 2;
           coin.mesh.position.y = 1.5 + Math.sin(state.time * 3 + coin.mesh.position.z) * 0.2;
           
-          // Magnet effect
           if (state.activePowerups.magnet) {
             const dist = ball.position.distanceTo(coin.mesh.position);
             if (dist < 8) {
@@ -1773,7 +1786,6 @@ function animate() {
         }
       });
       
-      // Powerups animation
       powerups.forEach(pu => {
         if (!pu.collected) {
           pu.mesh.rotation.y += dt * 2;
@@ -1782,7 +1794,6 @@ function animate() {
         }
       });
       
-      // Collision
       let onBridge = false;
       for (const seg of segments) {
         if (ball.position.z >= seg.zStart && ball.position.z <= seg.zEnd) {
@@ -1796,7 +1807,6 @@ function animate() {
         }
       }
       
-      // Coin collection
       coins.forEach(coin => {
         if (!coin.collected) {
           const dist = ball.position.distanceTo(coin.mesh.position);
@@ -1804,7 +1814,6 @@ function animate() {
             coin.collected = true;
             bridgeGroup.remove(coin.mesh);
             
-            // Combo
             if (state.time - state.lastCoinTime < 2) {
               state.combo++;
             } else {
@@ -1818,6 +1827,9 @@ function animate() {
             const earned = Math.floor((1 + comboBonus * 0.5) * multiplier);
             state.runCoins += earned;
             
+            // Trigger Floating Text
+            showFloatingText(`+${earned}🪙`, coin.mesh.position);
+
             audio.coin(state.combo);
             spawnParticles(coin.mesh.position, 0xffd54a, 12);
             vibrate(20);
@@ -1828,7 +1840,6 @@ function animate() {
         }
       });
       
-      // Powerup collection
       powerups.forEach(pu => {
         if (!pu.collected) {
           const dist = ball.position.distanceTo(pu.mesh.position);
@@ -1846,7 +1857,6 @@ function animate() {
         }
       });
       
-      // Update powerup timers
       Object.keys(state.powerupTimers).forEach(key => {
         if (state.powerupTimers[key] > 0 && state.powerupTimers[key] < 999) {
           state.powerupTimers[key] -= dt;
@@ -1861,7 +1871,6 @@ function animate() {
       
       if (!onBridge) {
         if (state.activePowerups.shield) {
-          // Shield saves us - teleport to nearest safe segment
           state.activePowerups.shield = false;
           state.powerupTimers.shield = 0;
           let bestSeg = null, bestDist = Infinity;
@@ -1914,7 +1923,6 @@ function animate() {
       if (ball.position.y < -35) gameOver();
     }
     
-    // Camera
     const shakeX = state.shakeAmount * (Math.random() - 0.5);
     const shakeY = state.shakeAmount * (Math.random() - 0.5);
     state.shakeAmount *= 0.9;
