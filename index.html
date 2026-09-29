@@ -1921,77 +1921,49 @@ function animate() {
       if (!onBridge) {
         if (state.activePowerups.shield) {
           state.activePowerups.shield = false;
-          state.powerupTimers.shield = 0;
+          hidePowerup();
+          audio.powerup();
+          showToast('🛡 Shield saved you!');
           let bestSeg = null, bestDist = Infinity;
-          for (const seg of segments) {
+          segments.forEach(seg => {
             const d = Math.abs(seg.zStart - ball.position.z);
             if (d < bestDist) { bestDist = d; bestSeg = seg; }
-          }
-          if (bestSeg) {
-            ball.position.set(bestSeg.plank.position.x, 0.75, bestSeg.zStart + 1);
-          }
-          spawnParticles(ball.position, 0x3b82f6, 30);
-          showToast('🛡 Shield saved you!');
-          vibrate(100);
-          screenShake();
+          });
+          if (bestSeg) ball.position.set(bestSeg.plank.position.x, 0.75, bestSeg.zStart + 1);
+          state.lateralVelocity = 0;
         } else {
           state.falling = true;
+          state.fallVelocity = 2;
           ballShadow.visible = false;
         }
       }
       
-      state.distance = Math.max(state.distance, ball.position.z - 3);
-      state.speed = Math.min(12, 5 + state.distance * 0.005);
-      updateHUD();
-      
-      if (ball.position.z >= state.levelEnd - 5) {
+      state.distance = ball.position.z - 3;
+      if (state.distance > state.levelEnd) {
         state.level++;
         audio.levelUp();
-        vibrate(100);
-        showToast('🎉 Level ' + state.level + '!');
-        const shift = ball.position.z - 3;
-        ball.position.z = 3;
-        segments.forEach(seg => {
-          seg.zStart -= shift; seg.zEnd -= shift;
-          seg.plank.position.z -= shift;
-          seg.railLeft.position.z -= shift;
-          seg.railRight.position.z -= shift;
-        });
-        coins.forEach(coin => coin.mesh.position.z -= shift);
-        powerups.forEach(pu => pu.mesh.position.z -= shift);
-        trailPoints.length = 0;
-        nextZ -= shift;
-        state.levelEnd = ball.position.z + generateLevel(state.level);
+        showToast(`🌉 Level ${state.level} Reached!`);
+        state.levelEnd = generateLevel(state.level);
+        state.speed += 0.5;
       }
       
-      if (ball.position.z > nextZ + 2) {
-        state.falling = true;
-        ballShadow.visible = false;
-      }
+      updateHUD();
     } else {
-      state.fallVelocity -= 30 * dt;
-      ball.position.y += state.fallVelocity * dt;
-      ball.rotation.x -= 5 * dt;
-      ball.rotation.z += 3 * dt;
-      if (ball.position.y < -35) gameOver();
+      ball.position.y -= state.fallVelocity * dt;
+      state.fallVelocity += 15 * dt;
+      ball.rotation.x += dt * 5;
+      ball.rotation.z += dt * 3;
+      
+      if (ball.position.y < -35) {
+        gameOver();
+      }
     }
-    
-    const shakeX = state.shakeAmount * (Math.random() - 0.5);
-    const shakeY = state.shakeAmount * (Math.random() - 0.5);
-    state.shakeAmount *= 0.9;
-    
-    const targetCamX = ball.position.x * 0.3 + shakeX;
-    const targetCamZ = ball.position.z - 8;
-    camera.position.x += (targetCamX - camera.position.x) * 0.08;
-    camera.position.y += (5 - camera.position.y) * 0.08;
-    camera.position.z += (targetCamZ - camera.position.z) * 0.08;
-    camera.position.y += shakeY;
-    camera.lookAt(ball.position.x * 0.2, 1, ball.position.z + 6);
-    
-    sunLight.position.set(ball.position.x + 50, 80, ball.position.z + 30);
-    sunLight.target.position.set(ball.position.x, 0, ball.position.z);
-    sunLight.updateMatrixYear = sunLight.updateMatrixWorld();
   }
+  
+  camera.position.x += (ball.position.x * 0.4 - camera.position.x) * 5 * dt;
+  camera.position.y += ((ball.position.y + 3.5) - camera.position.y) * 5 * dt;
+  camera.position.z += ((ball.position.z - 6) - camera.position.z) * 5 * dt;
+  camera.lookAt(ball.position.x, ball.position.y, ball.position.z + 2);
   
   renderer.render(scene, camera);
 }
@@ -2002,19 +1974,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    clock.stop();
-    if (state.running && !state.paused) togglePause();
-  } else {
-    clock.start();
-  }
-});
-
-// ========== INIT ==========
 updateMenuCurrency();
-audio.sfxEnabled = save.settings.sfx;
-audio.musicEnabled = save.settings.music;
+renderSettings();
 animate();
 </script>
 </body>
