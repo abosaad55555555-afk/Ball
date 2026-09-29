@@ -7,8 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="theme-color" content="#1a4d7a" />
 <meta name="description" content="Football Bridge - The ultimate balance challenge! Navigate your football across floating bridges, collect coins, unlock skins, and beat your best score!" />
-<meta name="keywords" content="football, bridge, balance, game, mobile, casual, soccer" />
-<title>Football Bridge - Balance Challenge</title>
+<title>Football Bridge - Real Ball Edition</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   
@@ -589,7 +588,7 @@
       <button class="btn btn-secondary" id="shareBtn">📤 Share</button>
     </div>
 
-    <div style="font-size: 11px; color: #666; margin-top: 8px;">v1.0 · Made with ❤</div>
+    <div style="font-size: 11px; color: #666; margin-top: 8px;">v1.0 · Real Ball Edition</div>
   </div>
 </div>
 
@@ -747,11 +746,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // ============================================================
-// FOOTBALL BRIDGE - PROFESSIONAL EDITION
+// FOOTBALL BRIDGE - REAL BALL EDITION
 // ============================================================
 
 // ========== SAVE SYSTEM ==========
-const SAVE_KEY = 'footballBridgePro_v1';
+const SAVE_KEY = 'footballBridgePro_v2';
 const defaultSave = {
   coins: 0,
   best: 0,
@@ -785,15 +784,15 @@ function saveSave() {
 
 // ========== CONTENT DEFINITIONS ==========
 const SKINS = [
-  { id: 'classic', name: 'Classic', price: 0, colors: ['#ffffff', '#1a1a1a'] },
-  { id: 'gold', name: 'Gold', price: 200, colors: ['#ffd700', '#b8860b'] },
-  { id: 'fire', name: 'Fire', price: 500, colors: ['#ff4500', '#8b0000'] },
-  { id: 'ice', name: 'Ice', price: 500, colors: ['#87ceeb', '#4169e1'] },
-  { id: 'emerald', name: 'Emerald', price: 750, colors: ['#50c878', '#006400'] },
-  { id: 'galaxy', name: 'Galaxy', price: 1000, colors: ['#9370db', '#191970'] },
-  { id: 'rainbow', name: 'Rainbow', price: 1500, colors: ['#ff0080', '#7928ca'] },
-  { id: 'diamond', name: 'Diamond', price: 2500, colors: ['#b9f2ff', '#00bfff'] },
-  { id: 'shadow', name: 'Shadow', price: 3000, colors: ['#2c2c2c', '#000000'] }
+  { id: 'classic', name: 'Classic Leather', price: 0, colors: ['#f4f4f4', '#151515'] },
+  { id: 'gold', name: 'Golden Champion', price: 200, colors: ['#ffd700', '#8b6508'] },
+  { id: 'fire', name: 'Magma Flare', price: 500, colors: ['#ff4500', '#4a0000'] },
+  { id: 'ice', name: 'Frost Blue', price: 500, colors: ['#b0e0e6', '#1c3d5a'] },
+  { id: 'emerald', name: 'Emerald Turf', price: 750, colors: ['#50c878', '#013220'] },
+  { id: 'galaxy', name: 'Cosmic Nebula', price: 1000, colors: ['#9370db', '#0b0033'] },
+  { id: 'rainbow', name: 'Neon Cyber', price: 1500, colors: ['#ff007f', '#3a0ca3'] },
+  { id: 'diamond', name: 'Diamond Crystal', price: 2500, colors: ['#e0ffff', '#004080'] },
+  { id: 'shadow', name: 'Dark Eclipse', price: 3000, colors: ['#333333', '#000000'] }
 ];
 
 const POWERUPS_DEF = {
@@ -827,7 +826,6 @@ class AudioSystem {
     this.sfxEnabled = true;
     this.musicEnabled = true;
     this.musicGain = null;
-    this.musicOsc = null;
     this.musicPlaying = false;
   }
   init() {
@@ -941,24 +939,26 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
 
 // ========== LIGHTING ==========
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const sunLight = new THREE.DirectionalLight(0xfffaed, 1.1);
 sunLight.position.set(50, 80, 30);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(1024, 1024);
+sunLight.shadow.mapSize.set(2048, 2048);
 sunLight.shadow.camera.left = -50; sunLight.shadow.camera.right = 50;
 sunLight.shadow.camera.top = 50; sunLight.shadow.camera.bottom = -50;
 sunLight.shadow.camera.near = 1; sunLight.shadow.camera.far = 200;
 scene.add(sunLight);
 scene.add(sunLight.target);
-scene.add(new THREE.HemisphereLight(0x87ceeb, 0x3a5f3a, 0.4));
+scene.add(new THREE.HemisphereLight(0xffffff, 0x445544, 0.5));
 
 // ========== ENVIRONMENT ==========
 const water = new THREE.Mesh(
   new THREE.PlaneGeometry(2000, 2000),
-  new THREE.MeshStandardMaterial({ color: 0x2a6ea8, roughness: 0.3, metalness: 0.1 })
+  new THREE.MeshStandardMaterial({ color: 0x1e6091, roughness: 0.1, metalness: 0.3 })
 );
 water.rotation.x = -Math.PI / 2;
 water.position.y = -40;
@@ -969,7 +969,7 @@ for (let i = 0; i < 12; i++) {
   const s = 0.5 + Math.random() * 1.5;
   const m = new THREE.Mesh(
     new THREE.ConeGeometry(8 * s, 20 * s, 6),
-    new THREE.MeshStandardMaterial({ color: 0x4a5f4a, flatShading: true, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0x3a5a40, flatShading: true, roughness: 0.9 })
   );
   m.position.set((Math.random() - 0.5) * 300, -30, -100 + Math.random() * 300);
   scene.add(m);
@@ -989,39 +989,91 @@ for (let i = 0; i < 15; i++) {
   clouds.push(g);
 }
 
-// ========== FOOTBALL ==========
-function createFootballTexture(colors) {
+// ========== REALISTIC FOOTBALL TEXTURE GENERATOR ==========
+function createRealFootballTexture(colors) {
   const c = document.createElement('canvas');
-  c.width = 512; c.height = 256;
+  c.width = 1024; c.height = 512;
   const ctx = c.getContext('2d');
+  
+  // Background base (Primary color)
   ctx.fillStyle = colors[0];
-  ctx.fillRect(0, 0, 512, 256);
-  ctx.fillStyle = colors[1];
-  for (let i = 0; i < 20; i++) {
-    const x = Math.random() * 512, y = Math.random() * 256, size = 15 + Math.random() * 10;
-    ctx.beginPath();
-    for (let j = 0; j < 5; j++) {
-      const a = (j * Math.PI * 2) / 5;
-      const px = x + Math.cos(a) * size, py = y + Math.sin(a) * size;
-      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
+  ctx.fillRect(0, 0, 1024, 512);
+  
+  // Add subtle leather noise grain
+  ctx.fillStyle = 'rgba(0,0,0,0.03)';
+  for(let i=0; i<1500; i++) {
+    ctx.fillRect(Math.random()*1024, Math.random()*512, 2, 2);
   }
+
+  // Draw realistic football panels (Pentagons & Hexagons pattern simulation)
+  ctx.fillStyle = colors[1];
+  
+  const cols = 12;
+  const rows = 6;
+  const cw = 1024 / cols;
+  const ch = 512 / rows;
+
+  for (let y = 0; y <= rows; y++) {
+    for (let x = 0; x <= cols; x++) {
+      let px = x * cw + (y % 2 === 0 ? 0 : cw / 2);
+      let py = y * ch;
+      
+      // Draw precise hexagonal-like curved patches
+      ctx.beginPath();
+      const r = cw * 0.42;
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+        let hx = px + Math.cos(a) * r;
+        let hy = py + Math.sin(a) * r * 0.8;
+        if (a === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      
+      // Inner stitching stroke detail
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 1);
   return tex;
 }
 
-const ballGeo = new THREE.SphereGeometry(0.6, 24, 24);
+const ballGeo = new THREE.SphereGeometry(0.6, 64, 64); // High fidelity geometry for roundness
 let ballMat = new THREE.MeshStandardMaterial({ 
-  map: createFootballTexture(SKINS[0].colors), 
-  roughness: 0.5,
-  metalness: 0.1
+  map: createRealFootballTexture(SKINS[0].colors), 
+  roughness: 0.35,        // Gives leather sheen
+  metalness: 0.05,        // Minimal metallic look for natural texture
+  bumpScale: 0.02
 });
 const ball = new THREE.Mesh(ballGeo, ballMat);
 ball.castShadow = true;
 scene.add(ball);
+
+// Realistic internal shadow / ambient occlusion ring under ball
+const shadowGeo = new THREE.PlaneGeometry(1.2, 1.2);
+const shadowCanvas = document.createElement('canvas');
+shadowCanvas.width = 128; shadowCanvas.height = 128;
+const sCtx = shadowCanvas.getContext('2d');
+const grad = sCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+grad.addColorStop(0, 'rgba(0,0,0,0.6)');
+grad.addColorStop(1, 'rgba(0,0,0,0)');
+sCtx.fillStyle = grad;
+sCtx.fillRect(0, 0, 128, 128);
+const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+
+const ballShadow = new THREE.Mesh(
+  shadowGeo,
+  new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.7, depthWrite: false })
+);
+ballShadow.rotation.x = -Math.PI / 2;
+scene.add(ballShadow);
 
 const trailPoints = [];
 const trailGeo = new THREE.BufferGeometry();
@@ -1031,7 +1083,7 @@ scene.add(trail);
 
 function updateBallSkin() {
   const skin = SKINS.find(s => s.id === save.equippedSkin) || SKINS[0];
-  ballMat.map = createFootballTexture(skin.colors);
+  ballMat.map = createRealFootballTexture(skin.colors);
   ballMat.needsUpdate = true;
 }
 updateBallSkin();
@@ -1043,8 +1095,8 @@ scene.add(bridgeGroup);
 const plankMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8 });
 const railMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.9 });
 const coinMat = new THREE.MeshStandardMaterial({ 
-  color: 0xffd54a, roughness: 0.3, metalness: 0.8,
-  emissive: 0xffd54a, emissiveIntensity: 0.3
+  color: 0xffd54a, roughness: 0.2, metalness: 0.9,
+  emissive: 0xffd54a, emissiveIntensity: 0.4
 });
 const powerupMats = {
   shield: new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x3b82f6, emissiveIntensity: 0.5, metalness: 0.5 }),
@@ -1090,7 +1142,7 @@ function createSegment(opts) {
   nextZ += length;
   
   if (Math.random() < 0.35) {
-    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16), coinMat);
+    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 24), coinMat);
     coin.position.set(
       (opts.x || 0) + (Math.random() - 0.5) * (width - 1),
       1.5,
@@ -1354,6 +1406,7 @@ function startGame() {
   
   ball.position.set(0, 0.75, 3);
   ball.rotation.set(0, 0, 0);
+  ballShadow.position.set(0, 0.16, 3);
   
   state.levelEnd = generateLevel(1);
   
@@ -1755,8 +1808,13 @@ function animate() {
       ball.position.z += speed * dt;
       ball.position.x += state.lateralVelocity * dt;
       
+      // Dynamic squash & stretch effect on ball rotation
       ball.rotation.x -= speed * dt / 0.6;
       ball.rotation.z -= state.lateralVelocity * dt / 0.6;
+      
+      // Keep ball shadow aligned beneath the ball
+      ballShadow.position.x = ball.position.x;
+      ballShadow.position.z = ball.position.z;
       
       trailPoints.push(ball.position.clone());
       if (trailPoints.length > 20) trailPoints.shift();
@@ -1802,6 +1860,7 @@ function animate() {
           if (Math.abs(ball.position.x - segX) <= halfWidth) {
             onBridge = true;
             ball.position.y = 0.15 + 0.6;
+            ballShadow.visible = true;
           }
           break;
         }
@@ -1827,7 +1886,6 @@ function animate() {
             const earned = Math.floor((1 + comboBonus * 0.5) * multiplier);
             state.runCoins += earned;
             
-            // Trigger Floating Text
             showFloatingText(`+${earned}🪙`, coin.mesh.position);
 
             audio.coin(state.combo);
@@ -1887,6 +1945,7 @@ function animate() {
           screenShake();
         } else {
           state.falling = true;
+          ballShadow.visible = false;
         }
       }
       
@@ -1914,7 +1973,10 @@ function animate() {
         state.levelEnd = ball.position.z + generateLevel(state.level);
       }
       
-      if (ball.position.z > nextZ + 2) state.falling = true;
+      if (ball.position.z > nextZ + 2) {
+        state.falling = true;
+        ballShadow.visible = false;
+      }
     } else {
       state.fallVelocity -= 30 * dt;
       ball.position.y += state.fallVelocity * dt;
@@ -1937,7 +1999,7 @@ function animate() {
     
     sunLight.position.set(ball.position.x + 50, 80, ball.position.z + 30);
     sunLight.target.position.set(ball.position.x, 0, ball.position.z);
-    sunLight.updateMatrixWorld();
+    sunLight.updateMatrixYear = sunLight.updateMatrixWorld();
   }
   
   renderer.render(scene, camera);
